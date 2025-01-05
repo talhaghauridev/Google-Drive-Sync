@@ -48,8 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final storage = FlutterSecureStorage();
   final GoogleSignIn googleSignIn = GoogleSignIn(
     scopes: [
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.appdata',
+      'https://www.googleapis.com/auth/drive',
     ],
   );
   GoogleSignInAccount? googleSignInAccount;
