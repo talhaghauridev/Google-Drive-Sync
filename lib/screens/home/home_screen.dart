@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis/drive/v3.dart' as ga;
@@ -33,7 +33,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final storage = FlutterSecureStorage();
   final GoogleSignIn googleSignIn = GoogleSignIn(scopes: [
-    "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive.appdata"
   ]);
@@ -46,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkSignInStatus();
+    initialization();
   }
 
   Future<void> _checkSignInStatus() async {
@@ -168,11 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
       var drive = ga.DriveApi(client);
       var response = await drive.files.list(
         spaces: 'drive',
-        $fields: 'files(id, name, mimeType, size, modifiedTime)',
+        $fields: 'files(id, name, mimeType, size, modifiedTime, thumbnailLink)',
         orderBy: 'modifiedTime desc',
         pageSize: 20,
       );
-
       print('Files found: ${response.files?.length ?? 0}');
       setState(() => list = response);
     } catch (e, stackTrace) {
@@ -216,11 +215,89 @@ class _HomeScreenState extends State<HomeScreen> {
       print('Download error: $e');
       print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download file')),
+        SnackBar(
+          content: Text('Failed to download file'),
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _createFolder(String folderName) async {
+    if (googleSignInAccount == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      var client = GoogleAuthClient(await googleSignInAccount!.authHeaders);
+      var drive = ga.DriveApi(client);
+
+      var folder = ga.File()
+        ..name = folderName
+        ..mimeType = 'application/vnd.google-apps.folder';
+
+      await drive.files.create(folder);
+      await _listGoogleDriveFiles();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Folder created successfully')),
+      );
+    } catch (e) {
+      print('Folder creation error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create folder')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showCreateFolderDialog() {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Color(0xFF1E1E1E),
+        title: Text('Create Folder', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          style: TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Folder name',
+            hintStyle: TextStyle(color: Colors.grey),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFa2d39b)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: Text('Create', style: TextStyle(color: Color(0xFFa2d39b))),
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                _createFolder(controller.text);
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void initialization() async {
+    print('ready in 3...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('ready in 2...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('ready in 1...');
+    await Future.delayed(const Duration(seconds: 1));
+    print('go!');
+    FlutterNativeSplash.remove();
   }
 
   @override
@@ -234,7 +311,6 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.only(left: 8),
           child: Text('Drive Files', style: TextStyle(fontSize: 25)),
         ),
-        centerTitle: true,
         actions: [
           if (signedIn)
             Padding(
@@ -309,6 +385,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   file.name ?? 'unknown',
                                                   file.id ?? '',
                                                 ),
+                                                mimeType: file.mimeType,
+                                                thumbnailLink:
+                                                    file.thumbnailLink,
                                               );
                                             },
                                           ),
@@ -322,10 +401,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
       floatingActionButton: signedIn
-          ? FloatingActionButton(
-              backgroundColor: Color(0xFFa2d39b),
-              child: Icon(Icons.upload_file, color: Colors.black),
-              onPressed: _uploadFileToGoogleDrive,
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'createFolder',
+                  backgroundColor: Color(0xFFa2d39b),
+                  child: Icon(Icons.create_new_folder, color: Colors.black),
+                  onPressed: () => _showCreateFolderDialog(),
+                ),
+                SizedBox(height: 16),
+                FloatingActionButton(
+                  heroTag: 'uploadFile',
+                  backgroundColor: Color(0xFFa2d39b),
+                  child: Icon(Icons.upload_file, color: Colors.black),
+                  onPressed: _uploadFileToGoogleDrive,
+                ),
+              ],
             )
           : null,
     );

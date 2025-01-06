@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:file_upload_app/screens/home/home_screen.dart';
 import 'package:file_upload_app/core/theme/app_theme.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(MyApp());
 }
 
