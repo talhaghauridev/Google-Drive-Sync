@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:googleapis/drive/v3.dart' as ga;
@@ -60,14 +61,15 @@ class _HomeScreenState extends State<HomeScreen> {
       googleSignInAccount = await googleSignIn.signInSilently();
       if (googleSignInAccount != null) {
         setState(() => signedIn = true);
-        _listGoogleDriveFiles();
+        await _listGoogleDriveFiles();
       }
     } catch (e) {
       print('Silent sign-in error: $e');
       await storage.write(key: "signedIn", value: "false");
       setState(() => signedIn = false);
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _handleSignIn() async {
@@ -75,6 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       googleSignInAccount = await googleSignIn.signIn();
       if (googleSignInAccount != null) {
+        final auth = await googleSignInAccount!.authentication;
+        String? accessToken = auth.accessToken;
+        print('Access token: $accessToken');
         await storage.write(key: "signedIn", value: "true");
         setState(() => signedIn = true);
         await _listGoogleDriveFiles();
@@ -84,8 +89,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to sign in: $error')),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _handleSignOut() async {
@@ -100,64 +106,84 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (error) {
       print('Sign out error: $error');
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _uploadFileToGoogleDrive() async {
-    if (googleSignInAccount == null) return;
+    if (googleSignInAccount == null) {
+      print('Error: No signed in account');
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
       final result = await FilePicker.platform.pickFiles();
       if (result != null) {
+        print('File selected: ${result.files.single.name}');
         final file = File(result.files.single.path!);
         var client = GoogleAuthClient(await googleSignInAccount!.authHeaders);
         var drive = ga.DriveApi(client);
 
-        var driveFile = ga.File();
-        driveFile.name = path.basename(file.path);
+        var driveFile = ga.File()
+          ..name = path.basename(file.path)
+          ..modifiedTime = DateTime.now().toUtc();
 
+        print('Starting upload: ${driveFile.name}');
         var response = await drive.files.create(
           driveFile,
           uploadMedia: ga.Media(file.openRead(), file.lengthSync()),
         );
 
-        print('File uploaded: ${response.name}');
+        print('Upload successful. File ID: ${response.id}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('File uploaded successfully')),
         );
 
         await _listGoogleDriveFiles();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Upload error: $e');
+      print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload file')),
+        SnackBar(content: Text('Upload failed: ${e.toString()}')),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _listGoogleDriveFiles() async {
-    if (googleSignInAccount == null) return;
-    print({"auth": googleSignInAccount!.authHeaders});
+    if (googleSignInAccount == null) {
+      print('Error: No signed in account');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       var client = GoogleAuthClient(await googleSignInAccount!.authHeaders);
+      print('Auth Headers: ${await googleSignInAccount!.authHeaders}');
+
       var drive = ga.DriveApi(client);
       var response = await drive.files.list(
         spaces: 'drive',
         $fields: 'files(id, name, mimeType, size, modifiedTime)',
+        orderBy: 'modifiedTime desc',
+        pageSize: 20,
       );
+
+      print('Files found: ${response.files?.length ?? 0}');
       setState(() => list = response);
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('List files error: $e');
+      print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to list files')),
+        SnackBar(content: Text('Failed to list files: ${e.toString()}')),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _downloadGoogleDriveFile(String fileName, String fileId) async {
@@ -186,13 +212,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('File downloaded successfully')),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Download error: $e');
+      print('Stack trace: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to download file')),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -201,12 +229,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         scrolledUnderElevation: 0,
         backgroundColor: Color(0xFF0F140E),
-        // Add consistent padding
         leadingWidth: 72,
         title: Padding(
           padding: EdgeInsets.only(left: 8),
           child: Text('Drive Files', style: TextStyle(fontSize: 25)),
         ),
+        centerTitle: true,
         actions: [
           if (signedIn)
             Padding(
@@ -221,75 +249,85 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: Color(0xFF90EE90)))
           : SafeArea(
-              // Added SafeArea to handle status bar
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   children: [
                     Expanded(
-                        child: !signedIn
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Connect to Google Drive',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium,
-                                    textAlign: TextAlign.center,
+                      child: !signedIn
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Connect to Google Drive',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 40),
+                                ElevatedButton(
+                                  onPressed: _handleSignIn,
+                                  child: Text('Connect to Google Drive'),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (list != null && list!.files != null) ...[
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.only(top: 16, bottom: 16),
+                                    child: Text(
+                                      'Your Drive Files',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge,
+                                    ),
                                   ),
-                                  SizedBox(height: 40),
-                                  ElevatedButton(
-                                    onPressed: _handleSignIn,
-                                    child: Text('Connect to Google Drive'),
+                                  Expanded(
+                                    child: list!.files!.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              'No files found',
+                                              style:
+                                                  TextStyle(color: Colors.grey),
+                                            ),
+                                          )
+                                        : ListView.builder(
+                                            itemCount: list!.files!.length,
+                                            itemBuilder: (context, index) {
+                                              final file = list!.files![index];
+                                              return DriveFileCard(
+                                                fileName:
+                                                    file.name ?? 'Unnamed file',
+                                                modifiedDate:
+                                                    'Modified: ${file.modifiedTime?.toLocal() ?? 'Unknown'}',
+                                                onDownload: () =>
+                                                    _downloadGoogleDriveFile(
+                                                  file.name ?? 'unknown',
+                                                  file.id ?? '',
+                                                ),
+                                              );
+                                            },
+                                          ),
                                   ),
                                 ],
-                              )
-                            : // Replace the Column inside the signedIn condition with this:
-                            SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment
-                                      .start, // Align text to start
-                                  children: [
-                                    if (list != null &&
-                                        list!.files != null) ...[
-                                      Padding(
-                                        padding: EdgeInsets.only(
-                                            top: 16, bottom: 16),
-                                        child: Text(
-                                          'Your Drive Files',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: ListView.builder(
-                                          itemCount: list!.files!.length,
-                                          itemBuilder: (context, index) {
-                                            final file = list!.files![index];
-                                            return DriveFileCard(
-                                              fileName:
-                                                  file.name ?? 'Unnamed file',
-                                              modifiedDate:
-                                                  'Modified: ${file.modifiedTime?.toLocal() ?? 'Unknown'}',
-                                              onDownload: () =>
-                                                  _downloadGoogleDriveFile(
-                                                file.name ?? 'unknown',
-                                                file.id ?? '',
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      )
-                                    ],
-                                  ],
-                                ),
-                              )),
+                              ],
+                            ),
+                    ),
                   ],
                 ),
               ),
             ),
+      floatingActionButton: signedIn
+          ? FloatingActionButton(
+              backgroundColor: Color(0xFFa2d39b),
+              child: Icon(Icons.upload_file, color: Colors.black),
+              onPressed: _uploadFileToGoogleDrive,
+            )
+          : null,
     );
   }
 }
