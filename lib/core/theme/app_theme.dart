@@ -11,11 +11,11 @@ class AppTheme {
         backgroundColor: AppColors.lightBackground,
         elevation: 0,
         titleTextStyle: TextStyle(
-          color: AppColors.lightColorScheme.primary,
+          // color: AppColors.lightColorScheme.primary,
           fontSize: 28,
           fontWeight: FontWeight.w500,
         ),
-        iconTheme: IconThemeData(color: AppColors.lightColorScheme.primary),
+        // iconTheme: IconThemeData(color: AppColors.lightColorScheme.primary),
       ),
       textTheme: TextTheme(
         headlineMedium: TextStyle(

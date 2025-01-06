@@ -17,9 +17,9 @@ package="com.example.file_upload_app"
         android:requestLegacyExternalStorage="true"
         android:preserveLegacyExternalStorage="true"
         android:usesCleartextTraffic="true"
-        android:label="file_upload_app"
+        android:label="Google Drive Sync"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         
         <!-- Add Google Play Services Version -->
         <meta-data

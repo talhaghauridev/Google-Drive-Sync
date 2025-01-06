@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -140,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _listGoogleDriveFiles() async {
     if (googleSignInAccount == null) return;
-
+    print({"auth": googleSignInAccount!.authHeaders});
     setState(() => _isLoading = true);
     try {
       var client = GoogleAuthClient(await googleSignInAccount!.authHeaders);
@@ -198,89 +199,95 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Drive Files',
-          style: TextStyle(color: Color(0xFFa2d39b)),
+        scrolledUnderElevation: 0,
+        backgroundColor: Color(0xFF0F140E),
+        // Add consistent padding
+        leadingWidth: 72,
+        title: Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: Text('Drive Files', style: TextStyle(fontSize: 25)),
         ),
         actions: [
           if (signedIn)
-            IconButton(
-              icon: Icon(Icons.logout),
-              onPressed: _handleSignOut,
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: IconButton(
+                icon: Icon(Icons.logout, color: Color(0xFFa2d39b)),
+                onPressed: _handleSignOut,
+              ),
             ),
         ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: Color(0xFF90EE90)))
-          : Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: !signedIn
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Connect to Google Drive',
-                                style:
-                                    Theme.of(context).textTheme.headlineMedium,
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 40),
-                              ElevatedButton(
-                                onPressed: _handleSignIn,
-                                child: Text('Connect to Google Drive'),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              if (list != null && list!.files != null) ...[
-                                Text(
-                                  'Your Drive Files',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                SizedBox(height: 16),
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: list!.files!.length,
-                                    itemBuilder: (context, index) {
-                                      final file = list!.files![index];
-                                      return Card(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        child: ListTile(
-                                          title: Text(
-                                            file.name ?? 'Unnamed file',
-                                            style:
-                                                TextStyle(color: Colors.white),
-                                          ),
-                                          subtitle: Text(
-                                            'Modified: ${file.modifiedTime?.toLocal() ?? 'Unknown'}',
-                                            style:
-                                                TextStyle(color: Colors.grey),
-                                          ),
-                                          trailing: IconButton(
-                                            icon: Icon(
-                                              Icons.download,
-                                              color: Color(0xFF90EE90),
-                                            ),
-                                            onPressed: () =>
-                                                _downloadGoogleDriveFile(
-                                              file.name ?? 'unknown',
-                                              file.id ?? '',
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
+          : SafeArea(
+              // Added SafeArea to handle status bar
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  children: [
+                    Expanded(
+                        child: !signedIn
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Connect to Google Drive',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium,
+                                    textAlign: TextAlign.center,
                                   ),
+                                  SizedBox(height: 40),
+                                  ElevatedButton(
+                                    onPressed: _handleSignIn,
+                                    child: Text('Connect to Google Drive'),
+                                  ),
+                                ],
+                              )
+                            : // Replace the Column inside the signedIn condition with this:
+                            SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment
+                                      .start, // Align text to start
+                                  children: [
+                                    if (list != null &&
+                                        list!.files != null) ...[
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                            top: 16, bottom: 16),
+                                        child: Text(
+                                          'Your Drive Files',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: list!.files!.length,
+                                          itemBuilder: (context, index) {
+                                            final file = list!.files![index];
+                                            return DriveFileCard(
+                                              fileName:
+                                                  file.name ?? 'Unnamed file',
+                                              modifiedDate:
+                                                  'Modified: ${file.modifiedTime?.toLocal() ?? 'Unknown'}',
+                                              onDownload: () =>
+                                                  _downloadGoogleDriveFile(
+                                                file.name ?? 'unknown',
+                                                file.id ?? '',
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    ],
+                                  ],
                                 ),
-                              ],
-                            ],
-                          ),
-                  ),
-                ],
+                              )),
+                  ],
+                ),
               ),
             ),
     );
