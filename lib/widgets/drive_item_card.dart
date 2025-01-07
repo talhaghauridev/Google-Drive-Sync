@@ -48,6 +48,7 @@ class DriveFileCard extends StatelessWidget {
     return Icon(iconData, color: Color(0xFFa2d39b), size: 36);
   }
 
+  @override
   Widget build(BuildContext context) {
     final fileNameParts = fileName.split('.');
     final extension = fileNameParts.length > 1 ? fileNameParts.last : '';
@@ -63,7 +64,6 @@ class DriveFileCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: onDownload,
         child: Padding(
           padding: EdgeInsets.all(16),
           child: Row(
