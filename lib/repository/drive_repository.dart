@@ -1,4 +1,5 @@
 // ignore_for_file: depend_on_referenced_packages
+import 'dart:convert';
 import 'dart:io';
 import 'package:file_upload_app/models/drive_model.dart';
 import 'package:file_upload_app/services/storage_service.dart';
@@ -138,5 +139,67 @@ class DriveRepository {
     }
 
     await saveFile.writeAsBytes(dataStore);
+  }
+
+  Future<void> deleteFile(String fileId) async {
+    if (_driveApi == null) throw Exception('Not signed in');
+
+    try {
+      await _driveApi!.files.delete(fileId);
+    } catch (e) {
+      print('Delete file error: $e');
+      throw Exception('Failed to delete file');
+    }
+  }
+
+  bool isFolder(DriveFileModel file) {
+    if (_driveApi == null) throw Exception('Not signed in');
+
+    try {
+      return file.mimeType == 'application/vnd.google-apps.folder';
+    } catch (e) {
+      print('Check folder error: $e');
+      return false;
+    }
+  }
+
+  Future<void> deleteFolder(String folderId) async {
+    if (_driveApi == null) throw Exception('Not signed in');
+
+    try {
+      // First, delete all files within the folder
+      final children = await _driveApi!.files.list(
+        q: "'$folderId' in parents",
+        $fields: 'files(id)',
+      );
+
+      if (children.files != null) {
+        for (var file in children.files!) {
+          await _driveApi!.files.delete(file.id!);
+        }
+      }
+
+      // Then delete the folder itself
+      await _driveApi!.files.delete(folderId);
+    } catch (e) {
+      print('Delete folder error: $e');
+      throw Exception('Failed to delete folder');
+    }
+  }
+
+  Future<void> deleteItem(String fileId, DriveFileModel file) async {
+    if (_driveApi == null) throw Exception('Not signed in');
+
+    try {
+      final isItemFolder = isFolder(file);
+      if (isItemFolder) {
+        await deleteFolder(fileId);
+      } else {
+        await deleteFile(fileId);
+      }
+    } catch (e) {
+      print('Delete item error: $e');
+      throw Exception('Failed to delete item');
+    }
   }
 }

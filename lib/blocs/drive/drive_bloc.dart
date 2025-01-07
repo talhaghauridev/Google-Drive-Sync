@@ -19,6 +19,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
     on<CreateFolderRequested>(_handleCreateFolder);
     on<CheckAuthStatusRequested>(_handleCheckAuthStatus);
     on<SilentSignInRequested>(_handleSilentSignIn);
+    on<DeleteItemRequested>(_handleDeleteItem);
   }
 
   Future<void> _handleSignIn(
@@ -144,7 +145,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
       emit(DriveLoading());
       try {
         await _repository.downloadFile(event.fileId, event.fileName);
-        emit(DriveSuccess("File uploaded successfully"));
+        emit(DriveSuccess("File downloaded successfully"));
         emit(DriveSignedIn(currentState.files));
       } catch (e) {
         emit(DriveError(e.toString()));
@@ -162,6 +163,27 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
       emit(DriveSignedIn(files));
     } catch (e) {
       emit(DriveError(e.toString()));
+    }
+  }
+
+  Future<void> _handleDeleteItem(
+    DeleteItemRequested event,
+    Emitter<DriveState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is DriveSignedIn) {
+      emit(DriveLoading());
+      try {
+        await _repository.deleteItem(event.fileId, event.file);
+        final files = await _repository.listFiles();
+        final bool fileType = _repository.isFolder(event.file);
+        emit(DriveSuccess(
+            "${fileType ? "Folder" : "File"} deleted successfully"));
+        emit(DriveSignedIn(files));
+      } catch (e) {
+        emit(DriveError(e.toString()));
+        emit(DriveSignedIn(currentState.files));
+      }
     }
   }
 }

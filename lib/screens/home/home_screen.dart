@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_upload_app/blocs/drive/drive_bloc.dart';
 import 'package:file_upload_app/blocs/drive/drive_event.dart';
 import 'package:file_upload_app/blocs/drive/drive_state.dart';
+import 'package:file_upload_app/widgets/drive_files_list.dart';
 import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,7 +60,10 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: state is! DriveSignedIn
                               ? _buildSignInView(context)
-                              : _buildFilesView(context, state),
+                              : DriveFilesList(
+                                  context: context,
+                                  state: state,
+                                ),
                         ),
                       ],
                     ),
@@ -105,48 +109,6 @@ class HomeScreen extends StatelessWidget {
             context.read<DriveBloc>().add(SignInRequested());
           },
           child: Text('Connect to Google Drive'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilesView(BuildContext context, DriveSignedIn state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(top: 16, bottom: 16),
-          child: Text(
-            'Your Drive Files',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        Expanded(
-          child: state.files.isEmpty
-              ? Center(
-                  child: Text(
-                    'No files found',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: state.files.length,
-                  itemBuilder: (context, index) {
-                    final file = state.files[index];
-                    return DriveFileCard(
-                      fileName: file.name,
-                      modifiedDate:
-                          'Modified: ${file.modifiedTime?.toLocal() ?? 'Unknown'}',
-                      onDownload: () {
-                        context.read<DriveBloc>().add(
-                              DowloadFileRequested(file.id, file.name),
-                            );
-                      },
-                      mimeType: file.mimeType,
-                      thumbnailLink: file.thumbnailLink,
-                    );
-                  },
-                ),
         ),
       ],
     );

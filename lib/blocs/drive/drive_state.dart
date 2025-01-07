@@ -4,6 +4,8 @@ import 'package:file_upload_app/models/drive_model.dart';
 abstract class DriveState extends Equatable {
   @override
   List<Object?> get props => [];
+
+  get files => null;
 }
 
 class DriveInitial extends DriveState {}

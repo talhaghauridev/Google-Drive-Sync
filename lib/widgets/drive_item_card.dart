@@ -11,12 +11,14 @@ class DriveFileCard extends StatelessWidget {
   final VoidCallback onDownload;
   final String? mimeType;
   final String? thumbnailLink;
+  final VoidCallback? onDelete;
 
   const DriveFileCard({
     Key? key,
     required this.fileName,
     required this.modifiedDate,
     required this.onDownload,
+    this.onDelete, // Add to constructor
     this.mimeType,
     this.thumbnailLink,
   }) : super(key: key);
@@ -75,7 +77,7 @@ class DriveFileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${truncateWithEllipsis(nameWithoutExt, 18)}$extension",
+                      "${truncateWithEllipsis(nameWithoutExt, 18)}s$extension",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -94,11 +96,47 @@ class DriveFileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.download, color: Color(0xFFa2d39b)),
-                onPressed: onDownload,
-                visualDensity: VisualDensity.compact,
-                splashRadius: 24,
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: Color(0xFFa2d39b)),
+                color: Color(0xFF1E1E1E),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'download',
+                    child: Row(
+                      children: [
+                        Icon(Icons.download, color: Color(0xFFa2d39b)),
+                        SizedBox(width: 12),
+                        Text(
+                          'Download',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.redAccent),
+                        SizedBox(width: 12),
+                        Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == 'download') {
+                    onDownload();
+                  } else if (value == 'delete') {
+                    onDelete?.call();
+                  }
+                },
               ),
             ],
           ),

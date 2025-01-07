@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:file_upload_app/models/drive_model.dart';
 
 abstract class DriveEvent extends Equatable {
   @override
@@ -41,7 +42,11 @@ class DowloadFileRequested extends DriveEvent {
   List<Object?> get props => [fileId, fileName];
 }
 
-class DeleteFileRequested extends DriveEvent {
+class DeleteItemRequested extends DriveEvent {
   final String fileId;
-  DeleteFileRequested(this.fileId);
+  final DriveFileModel file;
+  DeleteItemRequested(this.fileId, this.file);
+
+  @override
+  List<Object?> get props => [fileId];
 }
