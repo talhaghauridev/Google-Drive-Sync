@@ -6,26 +6,60 @@ import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class DriveFilesList extends StatelessWidget {
+class DriveFilesList extends StatefulWidget {
   final DriveState state;
-  final BuildContext context;
 
-  const DriveFilesList({super.key, required this.state, required this.context});
+  const DriveFilesList({super.key, required this.state});
+
+  @override
+  State<DriveFilesList> createState() => _DriveFilesListState();
+}
+
+class _DriveFilesListState extends State<DriveFilesList> {
+  void _openFolder(DriveFileModel file) {
+    if (file.mimeType == 'application/vnd.google-apps.folder') {
+      print('Attempting to open folder: ${file.name}');
+      context.read<DriveBloc>().add(
+            LoadFolderFilesRequested(
+              file.id,
+              isInFolder: true,
+            ),
+          );
+    }
+  }
+
+  void _navigateBack() {
+    print('Navigating back from folder');
+    context.read<DriveBloc>().add(LoadFilesRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
+    print('Current folder: ${widget.state.isInFolder}');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 16),
-          child: Text(
-            'Your Drive Files',
-            style: Theme.of(context).textTheme.titleLarge,
+          child: Row(
+            children: [
+              if (widget.state.isInFolder)
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => _navigateBack(),
+                  tooltip: 'Back to previous folder',
+                ),
+              const SizedBox(width: 2),
+              Text(
+                'Your Drive Files',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
           ),
         ),
         Expanded(
-          child: state.files.isEmpty
+          child: widget.state.files.isEmpty
               ? const Center(
                   child: Text(
                     'No files found',
@@ -33,9 +67,9 @@ class DriveFilesList extends StatelessWidget {
                   ),
                 )
               : ListView.builder(
-                  itemCount: state.files.length,
+                  itemCount: widget.state.files.length,
                   itemBuilder: (context, index) {
-                    final file = state.files[index];
+                    final file = widget.state.files[index];
                     return DriveFileCard(
                       fileName: file.name,
                       modifiedDate:
@@ -48,6 +82,7 @@ class DriveFilesList extends StatelessWidget {
                       onDelete: () => _deleteFileDialog(context, file),
                       mimeType: file.mimeType,
                       thumbnailLink: file.thumbnailLink,
+                      onTap: () => _openFolder(file),
                     );
                   },
                 ),
@@ -57,23 +92,22 @@ class DriveFilesList extends StatelessWidget {
   }
 
   void _deleteFileDialog(BuildContext context, DriveFileModel file) {
-    print('File: ${file.mimeType} hello');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1E1E1E),
-        title: Text(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text(
           'Are you absolutely sure?',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Delete this ${file.mimeType == "application/vnd.google-apps.folder" ? "folder" : "file"} permanently',
-          style: TextStyle(color: Colors.grey),
+          'Delete this ${file.mimeType == "application/vnd.google-apps.folder" ? "folder" : "file"} permanently?',
+          style: const TextStyle(color: Colors.grey),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
+            child: const Text(
               'Cancel',
               style: TextStyle(color: Colors.grey),
             ),
@@ -85,7 +119,7 @@ class DriveFilesList extends StatelessWidget {
                   );
               Navigator.pop(context);
             },
-            child: Text(
+            child: const Text(
               'Delete',
               style: TextStyle(color: Colors.redAccent),
             ),

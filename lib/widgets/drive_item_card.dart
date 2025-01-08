@@ -12,16 +12,18 @@ class DriveFileCard extends StatelessWidget {
   final String? mimeType;
   final String? thumbnailLink;
   final VoidCallback? onDelete;
+  final VoidCallback? onTap;
 
   const DriveFileCard({
-    Key? key,
+    super.key,
     required this.fileName,
     required this.modifiedDate,
     required this.onDownload,
-    this.onDelete, // Add to constructor
+    this.onDelete,
     this.mimeType,
     this.thumbnailLink,
-  }) : super(key: key);
+    this.onTap,
+  });
 
   Widget _getFileIcon() {
     if (thumbnailLink != null && mimeType?.startsWith('image/') == true) {
@@ -37,7 +39,6 @@ class DriveFileCard extends StatelessWidget {
         ),
       );
     }
-
     IconData iconData = Icons.insert_drive_file;
     if (mimeType?.startsWith('image/') == true) {
       iconData = Icons.image;
@@ -45,6 +46,9 @@ class DriveFileCard extends StatelessWidget {
       iconData = Icons.video_file;
     } else if (mimeType?.startsWith('audio/') == true) {
       iconData = Icons.audio_file;
+    } else if (mimeType?.startsWith('application/vnd.google-apps.folder') ==
+        true) {
+      iconData = Icons.folder;
     }
 
     return Icon(iconData, color: Color(0xFFa2d39b), size: 36);
@@ -65,6 +69,7 @@ class DriveFileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: EdgeInsets.all(16),
@@ -77,7 +82,7 @@ class DriveFileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${truncateWithEllipsis(nameWithoutExt, 18)}s$extension",
+                      "${truncateWithEllipsis(nameWithoutExt, 18)}$extension",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -106,7 +111,7 @@ class DriveFileCard extends StatelessWidget {
                   PopupMenuItem(
                     value: 'download',
                     child: Row(
-                      children: [
+                      children: const [
                         Icon(Icons.download, color: Color(0xFFa2d39b)),
                         SizedBox(width: 12),
                         Text(
@@ -119,7 +124,7 @@ class DriveFileCard extends StatelessWidget {
                   PopupMenuItem(
                     value: 'delete',
                     child: Row(
-                      children: [
+                      children: const [
                         Icon(Icons.delete, color: Colors.redAccent),
                         SizedBox(width: 12),
                         Text(

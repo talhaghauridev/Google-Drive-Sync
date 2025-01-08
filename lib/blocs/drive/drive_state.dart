@@ -2,10 +2,18 @@ import 'package:equatable/equatable.dart';
 import 'package:file_upload_app/models/drive_model.dart';
 
 abstract class DriveState extends Equatable {
-  @override
-  List<Object?> get props => [];
+  final List<DriveFileModel> files;
+  final bool isInFolder;
+  final String? currentFolderId;
 
-  get files => null;
+  const DriveState({
+    this.files = const [],
+    this.isInFolder = false,
+    this.currentFolderId,
+  });
+
+  @override
+  List<Object?> get props => [files, isInFolder, currentFolderId];
 }
 
 class DriveInitial extends DriveState {}
@@ -14,29 +22,40 @@ class DriveLoading extends DriveState {}
 
 class DriveSuccess extends DriveState {
   final String message;
-  DriveSuccess(this.message);
+
+  const DriveSuccess(
+    this.message, {
+    super.files,
+    super.isInFolder,
+    super.currentFolderId,
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [...super.props, message];
 }
 
 class DriveSignOut extends DriveState {}
 
 class DriveSignedIn extends DriveState {
-  final List<DriveFileModel> files;
-
-  DriveSignedIn(this.files);
-
-  @override
-  List<Object?> get props => [files];
+  const DriveSignedIn({
+    required super.files,
+    super.isInFolder,
+    super.currentFolderId,
+  });
 }
 
 class DriveFileDownloading extends DriveState {}
 
 class DriveError extends DriveState {
   final String message;
-  DriveError(this.message);
+
+  const DriveError(
+    this.message, {
+    super.files,
+    super.isInFolder,
+    super.currentFolderId,
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [...super.props, message];
 }

@@ -1,5 +1,4 @@
 // ignore_for_file: depend_on_referenced_packages
-import 'dart:convert';
 import 'dart:io';
 import 'package:file_upload_app/models/drive_model.dart';
 import 'package:file_upload_app/services/storage_service.dart';
@@ -89,6 +88,24 @@ class DriveRepository {
     if (_driveApi == null) throw Exception('Not signed in');
 
     final response = await _driveApi!.files.list(
+        spaces: 'drive',
+        $fields: 'files(id, name, mimeType, modifiedTime, thumbnailLink)',
+        orderBy: 'modifiedTime desc',
+        q: "'root' in parents");
+
+    return response.files
+            ?.map((file) => DriveFileModel.fromGoogleFile(file))
+            .toList() ??
+        [];
+  }
+
+  Future<List<DriveFileModel>> listFilesInFolder({
+    required String folderId,
+  }) async {
+    if (_driveApi == null) throw Exception('Not signed in');
+
+    final response = await _driveApi!.files.list(
+      q: "'$folderId' in parents",
       spaces: 'drive',
       $fields: 'files(id, name, mimeType, modifiedTime, thumbnailLink)',
       orderBy: 'modifiedTime desc',
@@ -100,12 +117,18 @@ class DriveRepository {
         [];
   }
 
-  Future<void> uploadFile(File file) async {
+  Future<void> uploadFile(File file, {String? parentFolderId}) async {
     if (_driveApi == null) throw Exception('Not signed in');
 
     var driveFile = ga.File()
       ..name = path.basename(file.path)
       ..modifiedTime = DateTime.now().toUtc();
+
+    if (parentFolderId != null) {
+      driveFile.parents = [parentFolderId];
+    } else {
+      driveFile.parents = ['root'];
+    }
 
     await _driveApi!.files.create(
       driveFile,
@@ -113,13 +136,18 @@ class DriveRepository {
     );
   }
 
-  Future<void> createFolder(String name) async {
+  Future<void> createFolder(String name, {String? parentFolderId}) async {
     if (_driveApi == null) throw Exception('Not signed in');
 
     var folder = ga.File()
       ..name = name
       ..mimeType = 'application/vnd.google-apps.folder';
 
+    if (parentFolderId != null) {
+      folder.parents = [parentFolderId];
+    } else {
+      folder.parents = ['root'];
+    }
     await _driveApi!.files.create(folder);
   }
 

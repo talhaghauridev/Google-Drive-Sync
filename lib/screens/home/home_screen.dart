@@ -4,7 +4,6 @@ import 'package:file_upload_app/blocs/drive/drive_bloc.dart';
 import 'package:file_upload_app/blocs/drive/drive_event.dart';
 import 'package:file_upload_app/blocs/drive/drive_state.dart';
 import 'package:file_upload_app/widgets/drive_files_list.dart';
-import 'package:file_upload_app/widgets/drive_item_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,6 +15,7 @@ class HomeScreen extends StatelessWidget {
     return BlocConsumer<DriveBloc, DriveState>(
       listener: (context, state) {
         if (state is DriveError) {
+          print(state.message);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
           );
@@ -61,7 +61,6 @@ class HomeScreen extends StatelessWidget {
                           child: state is! DriveSignedIn
                               ? _buildSignInView(context)
                               : DriveFilesList(
-                                  context: context,
                                   state: state,
                                 ),
                         ),
@@ -156,7 +155,6 @@ class HomeScreen extends StatelessWidget {
   Future<void> _handleUploadFile(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles();
     if (result != null && context.mounted) {
-      // Add context.mounted check
       final file = File(result.files.single.path!);
       context.read<DriveBloc>().add(UploadFileRequested(file));
     }

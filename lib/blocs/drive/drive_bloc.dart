@@ -14,6 +14,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
     on<SignInRequested>(_handleSignIn);
     on<SignOutRequested>(_handleSignOut);
     on<LoadFilesRequested>(_handleLoadFiles);
+    on<LoadFolderFilesRequested>(_handleLoadFolderFiles);
     on<UploadFileRequested>(_handleUploadFile);
     on<DowloadFileRequested>(_handleDownloadFile);
     on<CreateFolderRequested>(_handleCreateFolder);
@@ -31,7 +32,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
       if (success) {
         final files = await _repository.listFiles();
         emit(DriveSuccess("Signed In Successfully"));
-        emit(DriveSignedIn(files));
+        emit(DriveSignedIn(files: files));
       } else {
         emit(DriveSignOut());
       }
@@ -69,7 +70,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
 
         final files = results[0] as List<DriveFileModel>;
 
-        emit(DriveSignedIn(files));
+        emit(DriveSignedIn(files: files));
       } else {
         emit(DriveSignOut());
       }
@@ -97,7 +98,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
 
         final files = results[0] as List<DriveFileModel>;
 
-        emit(DriveSignedIn(files));
+        emit(DriveSignedIn(files: files));
       } else {
         emit(DriveSignOut());
       }
@@ -111,27 +112,66 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
     emit(DriveLoading());
     try {
       final files = await _repository.listFiles();
-      emit(DriveSignedIn(files));
+      emit(DriveSignedIn(
+        files: files,
+        isInFolder: false,
+        currentFolderId: null,
+      ));
     } catch (e) {
       emit(DriveError(e.toString()));
     }
   }
 
-  // In DriveBloc
+  Future<void> _handleLoadFolderFiles(
+      LoadFolderFilesRequested event, Emitter<DriveState> emit) async {
+    emit(DriveLoading());
+
+    try {
+      final result = await _repository.listFilesInFolder(
+        folderId: event.folderId,
+      );
+      emit(DriveSignedIn(
+        files: result,
+        isInFolder: true,
+        currentFolderId: event.folderId,
+      ));
+    } catch (e) {
+      emit(DriveError(e.toString()));
+    }
+  }
+
   Future<void> _handleUploadFile(
       UploadFileRequested event, Emitter<DriveState> emit) async {
     final currentState = state;
     if (currentState is DriveSignedIn) {
       emit(DriveLoading());
+      final bool isFolder =
+          currentState.isInFolder && currentState.currentFolderId != null;
       try {
-        await _repository.uploadFile(event.file);
-        // Get updated file list after upload
-        final files = await _repository.listFiles();
+        await _repository.uploadFile(
+          event.file,
+          parentFolderId: isFolder ? currentState.currentFolderId : null,
+        );
+
+        final files = isFolder
+            ? await _repository.listFilesInFolder(
+                folderId: currentState.currentFolderId!,
+              )
+            : await _repository.listFiles();
+
         emit(DriveSuccess("File uploaded successfully"));
-        emit(DriveSignedIn(files));
+        emit(DriveSignedIn(
+          files: files,
+          isInFolder: currentState.isInFolder,
+          currentFolderId: currentState.currentFolderId,
+        ));
       } catch (e) {
         emit(DriveError(e.toString()));
-        emit(DriveSignedIn(currentState.files));
+        emit(DriveSignedIn(
+          files: currentState.files,
+          isInFolder: currentState.isInFolder,
+          currentFolderId: currentState.currentFolderId,
+        ));
       }
     }
   }
@@ -146,7 +186,7 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
       try {
         await _repository.downloadFile(event.fileId, event.fileName);
         emit(DriveSuccess("File downloaded successfully"));
-        emit(DriveSignedIn(currentState.files));
+        emit(DriveSignedIn(files: currentState.files));
       } catch (e) {
         emit(DriveError(e.toString()));
       }
@@ -155,12 +195,31 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
 
   Future<void> _handleCreateFolder(
       CreateFolderRequested event, Emitter<DriveState> emit) async {
+    final currentState = state;
     emit(DriveLoading());
     try {
-      await _repository.createFolder(event.folderName);
-      final files = await _repository.listFiles();
+      final bool isFolder =
+          currentState.isInFolder && currentState.currentFolderId != null;
+
+      await _repository.createFolder(
+        event.folderName,
+        parentFolderId: isFolder ? currentState.currentFolderId : null,
+      );
+
+      final files = currentState is DriveSignedIn && isFolder
+          ? await _repository.listFilesInFolder(
+              folderId: currentState.currentFolderId!,
+            )
+          : await _repository.listFiles();
+
       emit(DriveSuccess("Folder created successfully"));
-      emit(DriveSignedIn(files));
+      emit(DriveSignedIn(
+        files: files,
+        isInFolder:
+            currentState is DriveSignedIn ? currentState.isInFolder : false,
+        currentFolderId:
+            currentState is DriveSignedIn ? currentState.currentFolderId : null,
+      ));
     } catch (e) {
       emit(DriveError(e.toString()));
     }
@@ -172,17 +231,32 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
   ) async {
     final currentState = state;
     if (currentState is DriveSignedIn) {
+      final bool isFolder =
+          currentState.isInFolder && currentState.currentFolderId != null;
+
       emit(DriveLoading());
       try {
         await _repository.deleteItem(event.fileId, event.file);
-        final files = await _repository.listFiles();
+        final files = isFolder
+            ? await _repository.listFilesInFolder(
+                folderId: currentState.currentFolderId!,
+              )
+            : await _repository.listFiles();
+
         final bool fileType = _repository.isFolder(event.file);
         emit(DriveSuccess(
             "${fileType ? "Folder" : "File"} deleted successfully"));
-        emit(DriveSignedIn(files));
+        emit(DriveSignedIn(
+            files: files,
+            currentFolderId: state.currentFolderId,
+            isInFolder: state.isInFolder));
       } catch (e) {
         emit(DriveError(e.toString()));
-        emit(DriveSignedIn(currentState.files));
+        emit(DriveSignedIn(
+          files: currentState.files,
+          isInFolder: currentState.isInFolder,
+          currentFolderId: currentState.currentFolderId,
+        ));
       }
     }
   }

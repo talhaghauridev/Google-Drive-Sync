@@ -17,6 +17,24 @@ class SilentSignInRequested extends DriveEvent {}
 
 class LoadFilesRequested extends DriveEvent {}
 
+class LoadFolderFilesRequested extends DriveEvent {
+  final String folderId;
+  final bool isInFolder;
+
+  LoadFolderFilesRequested(
+    this.folderId, {
+    this.isInFolder = false,
+  });
+
+  @override
+  List<Object?> get props => [folderId, isInFolder];
+}
+
+class NavigateBackRequested extends DriveEvent {
+  final String previousFolderId;
+  NavigateBackRequested(this.previousFolderId);
+}
+
 class UploadFileRequested extends DriveEvent {
   final File file;
   UploadFileRequested(this.file);
