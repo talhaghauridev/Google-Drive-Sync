@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_upload_app/blocs/drive/drive_bloc.dart';
 import 'package:file_upload_app/blocs/drive/drive_event.dart';
 import 'package:file_upload_app/blocs/drive/drive_state.dart';
 import 'package:file_upload_app/widgets/drive_files_list.dart';
+import 'package:file_upload_app/widgets/image_crop_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -153,10 +155,36 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<void> _handleUploadFile(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && context.mounted) {
+    FilePickerResult? result = await FilePicker.platform
+        .pickFiles(type: FileType.image, allowMultiple: false);
+
+    if (result != null) {
       final file = File(result.files.single.path!);
-      context.read<DriveBloc>().add(UploadFileRequested(file));
+      final imageData = await file.readAsBytes();
+      await _showImageCropDialog(context, imageData);
     }
+    // if (result != null && context.mounted) {
+    //   final file = File(result.files.single.path!);
+    //   context.read<DriveBloc>().add(UploadFileRequested(file));
+    // }
   }
+}
+
+Future<void> _showImageCropDialog(BuildContext context, Uint8List imageData) {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) {
+      return ImageCropScreen(
+        imageData: imageData,
+        onUpload: (croppedFile) {
+          // Close dialog first
+          Navigator.of(dialogContext).pop();
+          // Then trigger the upload
+          context.read<DriveBloc>().add(UploadFileRequested(croppedFile));
+        },
+        onCancel: () => Navigator.of(dialogContext).pop(),
+      );
+    },
+  );
 }
