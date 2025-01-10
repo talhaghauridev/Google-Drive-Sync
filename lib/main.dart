@@ -20,7 +20,6 @@ class MyApp extends StatelessWidget {
   MyApp({super.key});
 
   @override
-  @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
