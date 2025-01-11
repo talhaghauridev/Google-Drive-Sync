@@ -13,7 +13,7 @@ class StorageService {
     return false;
   }
 
-  Future<void> saveUserData(Map<String, String> userData) async {
+  Future<void> saveUserData(Map<String, String?> userData) async {
     await _storage.write(key: "userData", value: json.encode(userData));
   }
 

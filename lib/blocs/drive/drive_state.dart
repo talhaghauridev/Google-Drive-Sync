@@ -5,11 +5,12 @@ abstract class DriveState extends Equatable {
   final List<DriveFileModel> files;
   final bool isInFolder;
   final String? currentFolderId;
-
+  final String? accessToken;
   const DriveState({
     this.files = const [],
     this.isInFolder = false,
     this.currentFolderId,
+    this.accessToken,
   });
 
   @override
@@ -37,11 +38,11 @@ class DriveSuccess extends DriveState {
 class DriveSignOut extends DriveState {}
 
 class DriveSignedIn extends DriveState {
-  const DriveSignedIn({
-    required super.files,
-    super.isInFolder,
-    super.currentFolderId,
-  });
+  const DriveSignedIn(
+      {required super.files,
+      super.isInFolder,
+      super.currentFolderId,
+      super.accessToken});
 }
 
 class DriveFileDownloading extends DriveState {}

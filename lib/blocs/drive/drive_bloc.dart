@@ -28,11 +28,16 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
     emit(DriveLoading());
 
     try {
-      final success = await _repository.signIn();
-      if (success) {
+      final result = await _repository.signIn();
+      if (result['success']) {
         final files = await _repository.listFiles();
-        emit(DriveSuccess("Signed In Successfully"));
-        emit(DriveSignedIn(files: files));
+        emit(DriveSuccess(
+          "Signed In Successfully",
+        ));
+        emit(DriveSignedIn(
+          files: files,
+          accessToken: result['accessToken'],
+        ));
       } else {
         emit(DriveSignOut());
       }
@@ -60,17 +65,20 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
     emit(DriveLoading());
     try {
       final isSignedIn = await _repository.checkSignInStatus();
-      print("isSignedIn: $isSignedIn");
       if (isSignedIn) {
-        // Run listFiles and getUserData concurrently
         final results = await Future.wait([
           _repository.listFiles(),
           _storage.getUserData(),
         ]);
 
         final files = results[0] as List<DriveFileModel>;
+        final userData = results[1] as Map<String, dynamic>?;
+        final accessToken = userData?['accessToken'] as String?;
 
-        emit(DriveSignedIn(files: files));
+        emit(DriveSignedIn(
+          files: files,
+          accessToken: accessToken,
+        ));
       } else {
         emit(DriveSignOut());
       }
@@ -98,7 +106,13 @@ class DriveBloc extends Bloc<DriveEvent, DriveState> {
 
         final files = results[0] as List<DriveFileModel>;
 
-        emit(DriveSignedIn(files: files));
+        final userData = results[1] as Map<String, dynamic>?;
+        final accessToken = userData?['accessToken'] as String?;
+
+        emit(DriveSignedIn(
+          files: files,
+          accessToken: accessToken,
+        ));
       } else {
         emit(DriveSignOut());
       }

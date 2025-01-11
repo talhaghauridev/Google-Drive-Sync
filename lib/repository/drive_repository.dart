@@ -19,21 +19,25 @@ class DriveRepository {
   GoogleSignInAccount? _currentUser;
   ga.DriveApi? _driveApi;
 
-  Future<bool> signIn() async {
+  Future<Map<String, dynamic>> signIn() async {
     try {
       _currentUser = await _googleSignIn.signIn();
       if (_currentUser != null) {
-        // ignore: unused_local_variable
         final auth = await _currentUser!.authentication;
+        final accessToken = auth.accessToken; // Get access token
         final client = GoogleAuthClient(await _currentUser!.authHeaders);
         _driveApi = ga.DriveApi(client);
         await _saveUserData(_currentUser!);
-        return true;
+
+        return {
+          'success': true,
+          'accessToken': accessToken,
+        };
       }
-      return false;
+      return {'success': false};
     } catch (e) {
       print('Sign in error: $e');
-      return false;
+      return {'success': false};
     }
   }
 
@@ -60,6 +64,7 @@ class DriveRepository {
       if (_currentUser != null) {
         // ignore: unused_local_variable
         final auth = await _currentUser!.authentication;
+        print("This is ");
         final client = GoogleAuthClient(await _currentUser!.authHeaders);
         _driveApi = ga.DriveApi(client);
 
@@ -75,11 +80,13 @@ class DriveRepository {
   }
 
   Future<void> _saveUserData(GoogleSignInAccount user) async {
+    final auth = await user.authentication;
     final userData = {
       'email': user.email,
       'displayName': user.displayName ?? '',
       'id': user.id,
       'photoUrl': user.photoUrl ?? '',
+      'accessToken': auth.accessToken,
     };
     await _storage.saveUserData(userData);
   }
