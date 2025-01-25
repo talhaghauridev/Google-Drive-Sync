@@ -1,5 +1,6 @@
 import 'package:file_upload_app/blocs/drive/drive_bloc.dart';
 import 'package:file_upload_app/blocs/drive/drive_event.dart';
+import 'package:file_upload_app/constants/constants.dart';
 import 'package:file_upload_app/repository/drive_repository.dart';
 import 'package:file_upload_app/services/storage_service.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
               ..add(CheckAuthStatusRequested()))
       ],
       child: MaterialApp(
-        title: 'Google Drive Sync',
+        title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,

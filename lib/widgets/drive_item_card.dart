@@ -1,3 +1,4 @@
+import 'package:file_upload_app/constants/constants.dart';
 import 'package:flutter/material.dart';
 
 String truncateWithEllipsis(String str, int maxLength) {
@@ -46,8 +47,7 @@ class DriveFileCard extends StatelessWidget {
       iconData = Icons.video_file;
     } else if (mimeType?.startsWith('audio/') == true) {
       iconData = Icons.audio_file;
-    } else if (mimeType?.startsWith('application/vnd.google-apps.folder') ==
-        true) {
+    } else if (mimeType?.startsWith(AppConstants.folderType) == true) {
       iconData = Icons.folder;
     }
 

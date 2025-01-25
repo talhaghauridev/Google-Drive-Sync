@@ -1,4 +1,3 @@
-// ImageCropScreen.dart
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:crop_your_image/crop_your_image.dart';
@@ -19,13 +18,37 @@ class ImageCropScreen extends StatefulWidget {
   });
 
   @override
-  // ignore: library_private_types_in_public_api
   _ImageCropScreenState createState() => _ImageCropScreenState();
 }
 
 class _ImageCropScreenState extends State<ImageCropScreen> {
   final CropController _cropController = CropController();
   bool _isProcessing = false;
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              CircularProgressIndicator(
+                color: Color(0xFFa2d39b),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Processing image...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _performCrop() async {
     if (_isProcessing) return;
@@ -35,9 +58,10 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
     });
 
     try {
-      // Trigger the crop operation
+      _showLoadingDialog();
       _cropController.crop();
     } catch (e) {
+      Navigator.pop(context);
       debugPrint('Crop error: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +73,6 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: () async {
         if (!_isProcessing) {
@@ -87,21 +110,13 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
               child: Crop(
                 controller: _cropController,
                 image: widget.imageData,
-                aspectRatio: 480 / 320,
                 onCropped: (croppedData) async {
                   try {
                     final img.Image? originalImage =
                         img.decodeImage(croppedData);
                     if (originalImage != null) {
-                      final img.Image resizedImage = img.copyResize(
-                        originalImage,
-                        width: 480,
-                        height: 320,
-                        interpolation: img.Interpolation.linear,
-                      );
-
                       final processedData =
-                          img.encodeJpg(resizedImage, quality: 100);
+                          img.encodeJpg(originalImage, quality: 100);
 
                       final tempDir = await getTemporaryDirectory();
                       final file = File(
@@ -110,13 +125,13 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                       await file.writeAsBytes(processedData);
 
                       if (mounted) {
+                        Navigator.pop(context);
                         widget.onUpload(file);
                       }
                     }
                   } catch (e) {
-                    debugPrint('Process error: ${e.toString()}');
                     if (mounted) {
-                      // ignore: use_build_context_synchronously
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(
@@ -131,7 +146,6 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                     }
                   }
                 },
-                // ignore: deprecated_member_use
                 maskColor: Colors.black.withOpacity(0.7),
                 baseColor: Colors.black,
                 onStatusChanged: (status) {
@@ -139,14 +153,7 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                     setState(() => _isProcessing = true);
                   }
                 },
-                cornerDotBuilder: (size, edgeAlignment) =>
-                    const SizedBox.shrink(),
-                progressIndicator: _isProcessing
-                    ? const CircularProgressIndicator(
-                        color: Color(0xFFa2d39b),
-                      )
-                    : const Text("Loading...",
-                        style: TextStyle(color: Colors.white)),
+                progressIndicator: const SizedBox.shrink(),
               ),
             ),
           ],

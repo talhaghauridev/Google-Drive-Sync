@@ -36,7 +36,7 @@ class HomeScreen extends StatelessWidget {
             leadingWidth: 72,
             title: Padding(
               padding: EdgeInsets.only(left: 8),
-              child: Text('Drive Files', style: TextStyle(fontSize: 25)),
+              child: Text('Drive Sync', style: TextStyle(fontSize: 25)),
             ),
             actions: [
               if (state is DriveSignedIn)
@@ -163,10 +163,6 @@ class HomeScreen extends StatelessWidget {
       final imageData = await file.readAsBytes();
       await _showImageCropDialog(context, imageData);
     }
-    // if (result != null && context.mounted) {
-    //   final file = File(result.files.single.path!);
-    //   context.read<DriveBloc>().add(UploadFileRequested(file));
-    // }
   }
 }
 

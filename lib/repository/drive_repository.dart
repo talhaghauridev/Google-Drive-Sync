@@ -1,5 +1,6 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'dart:io';
+import 'package:file_upload_app/constants/constants.dart';
 import 'package:file_upload_app/models/drive_model.dart';
 import 'package:file_upload_app/services/storage_service.dart';
 import 'package:file_upload_app/utils/google_auth_client.dart';
@@ -14,7 +15,11 @@ final List<String> scopes = [
 ];
 
 class DriveRepository {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: scopes);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: scopes,
+    forceCodeForRefreshToken: true,
+    signInOption: SignInOption.standard,
+  );
   final _storage = StorageService();
   GoogleSignInAccount? _currentUser;
   ga.DriveApi? _driveApi;
@@ -60,7 +65,10 @@ class DriveRepository {
 
   Future<bool> silentSignIn() async {
     try {
-      _currentUser = await _googleSignIn.signInSilently();
+      _currentUser = await _googleSignIn.signInSilently(
+        suppressErrors: false,
+        reAuthenticate: true,
+      );
       if (_currentUser != null) {
         // ignore: unused_local_variable
         final auth = await _currentUser!.authentication;
@@ -148,7 +156,7 @@ class DriveRepository {
 
     var folder = ga.File()
       ..name = name
-      ..mimeType = 'application/vnd.google-apps.folder';
+      ..mimeType = AppConstants.folderType;
 
     if (parentFolderId != null) {
       folder.parents = [parentFolderId];
@@ -191,7 +199,7 @@ class DriveRepository {
     if (_driveApi == null) throw Exception('Not signed in');
 
     try {
-      return file.mimeType == 'application/vnd.google-apps.folder';
+      return file.mimeType == AppConstants.folderType;
     } catch (e) {
       print('Check folder error: $e');
       return false;
